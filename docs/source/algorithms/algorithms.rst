@@ -1,16 +1,16 @@
 algorithms package
 ==================
 
-Subpackages
------------
-
-.. toctree::
-   :maxdepth: 4
-
-   algorithms.contagion
-
 Submodules
 ----------
+
+algorithms.contagion module
+---------------------------
+
+.. automodule:: algorithms.contagion
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 algorithms.generative\_models module
 ------------------------------------
@@ -40,6 +40,14 @@ algorithms.laplacians\_clustering module
 ----------------------------------------
 
 .. automodule:: algorithms.laplacians_clustering
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+algorithms.matching\_algorithms module
+--------------------------------------
+
+.. automodule:: algorithms.matching_algorithms
    :members:
    :undoc-members:
    :show-inheritance:

@@ -11,17 +11,91 @@ Hypernetx-Widget
 
 Overview
 --------
-The HyperNetXWidget_ is an addon for HNX, which extends the built in visualization 
-capabilities of HNX to a JavaScript based interactive visualization. The tool has two main interfaces, 
+The HyperNetXWidget is an addon for HNX, which extends the built-in visualization
+capabilities of HNX to a JavaScript based interactive visualization. The tool has two main interfaces,
 the hypergraph visualization and the nodes & edges panel.
-You may `demo the widget here <https://pnnl.github.io/hypernetx-widget/>`_
+You may `demo the widget here <https://pnnl.github.io/hypernetx-widget/>`_.
+
+The HypernetxWidget is open source and
+available on `GitHub <https://github.com/pnnl/hypernetx-widget>`_ It is also `published on PyPI
+<https://pypi.org/project/hnxwidget/>`_
+
+**The HyperNetX widget is currently in beta with limitations on the Jupyter environment in which it may be used.
+It is being actively worked on. Look for improvements and an expanded list of usable environments in a future release.**
 
 Installation
 ------------
-The HypernetxWidget_ is available on `GitHub <https://github.com>`_ and may be
-installed using pip:
 
-    >>> pip install hnxwidget
+HyperNetXWidget is currently in beta and will only work on Jupyter Notebook 6.5.x. It is not supported on Jupyter Lab,
+but support for Jupyter Lab is in planning.
+
+In addition, HyperNetXWidget must be installed using the `Anaconda platform <https://www.anaconda.com/>`_ so that the
+widget can render on Jupyter notebook.
+
+For users with inexperience with Jupyter and Anaconda, it is highly recommended to use the base environment of Anaconda so
+that the widget works seamlessly and out-of-the box on Jupyter Notebook. The widget does not work on Jupyter Lab.
+
+If users want to create a custom environment instead of using the base environment provided by Anaconda, then users
+will need to do additional configuration on Jupyter and the kernel to ensure that the widget works.
+Specifically, users will need to set the Kernel to use a custom environment. For a guide on how to do this, please
+read and follow this guide: `How to add your Conda environment to your jupyter notebook in just 4 steps <https://medium.com/@nrk25693/how-to-add-your-conda-environment-to-your-jupyter-notebook-in-just-4-steps-abeab8b8d084>`_.
+
+
+**It is highly recommended to use Anaconda to setup your virtual environment. Using python's built-in venv module or
+virtualenv to create your virtual environment may result in the widget will not rendering on Jupyter notebook.**
+
+Prerequisites
+^^^^^^^^^^^^^
+* conda 23.11.x
+* python 3.11.x
+* jupyter notebook 6.5.4
+* ipywidgets 7.6.5
+
+
+Installation Steps
+^^^^^^^^^^^^^^^^^^
+
+Open a new shell and run the following commands::
+
+    # update conda
+    conda update conda
+
+    # activate the base environment
+    conda activate
+
+    # install hypernetx and hnxwidget
+    pip install hypernetx hnxwidget
+
+    # install jupyter notebook and extensions
+    conda install -y -c anaconda notebook
+    conda install -y -c conda-forge jupyter_contrib_nbextensions
+
+    # install and enable the hnxwidget on jupyter
+    jupyter nbextension install --py --symlink --sys-prefix hnxwidget
+    jupyter nbextension enable --py --sys-prefix hnxwidget
+
+    # install ipykernel and use it to add the base environment to jupyter notebook
+    conda install -y -c anaconda ipykernel
+    python -m ipykernel install --user --name=base
+
+    # start the notebook
+    jupyter-notebook
+
+
+Conda Environment
+^^^^^^^^^^^^^^^^^
+
+If the notebook runs into a `ModuleNotFoundError` for the HyperNetX or HyperNetXWidget packages, ensure that you set
+your kernel to the conda base environment (i.e. `base`). This will ensure that your notebook has the right environment
+to run the widget.
+
+On the notebook, click the "New" drop-down button and select "base" as the environment for your notebook. See the
+following screenshot as an example:
+
+.. image:: images/notebook_ipykernel.png
+   :width: 300px
+   :align: center
+
 
 Using the Tool
 --------------

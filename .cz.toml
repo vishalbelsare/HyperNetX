@@ -1,0 +1,24 @@
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "2.3.10"
+version_provider = "poetry"
+version_files = [
+    "pyproject.toml",
+    "docs/source/conf.py",
+    "hypernetx/__init__.py",
+    ".cz.toml"
+]
+tag_format = "v$major.$minor.$patch$prerelease"
+update_changelog_on_bump = false
+style = [
+    ["qmark", "fg:#ff9d00 bold"],
+    ["question", "bold"],
+    ["answer", "fg:#ff9d00 bold"],
+    ["pointer", "fg:#ff9d00 bold"],
+    ["highlighted", "fg:#ff9d00 bold"],
+    ["selected", "fg:#cc5454"],
+    ["separator", "fg:#cc5454"],
+    ["instruction", ""],
+    ["text", ""],
+    ["disabled", "fg:#858585 italic"]
+]

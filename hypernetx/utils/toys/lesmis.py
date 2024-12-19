@@ -1,24 +1,27 @@
 # Copyright © 2018 Battelle Memorial Institute
 # All rights reserved.
 
-import numpy as np
 import pandas as pd
+import numpy as np
 from itertools import islice, chain, repeat
-
-import networkx as nx
 
 import matplotlib.pyplot as plt
 
 import hypernetx as hnx
-
-__all__ = ["LesMis", "lesmis_hypergraph_from_df", "book_tour"]
 
 
 class LesMis(object):
     def __init__(self):
         self.volumes = pd.DataFrame.from_dict(volume_names, orient="index")
 
-        accents = {"\`e": "è", "\\`e": "è", "'e": "é", "\\c{c}": "ç", "\^o": "ô"}
+        accents = {
+            r"\`e": "è",
+            r"\\'e": "è",
+            r"\\`e": "è",
+            r"'e": "é",
+            r"\\c{c}": "ç",
+            r"\^o": "ô",
+        }
         for k, v in accents.items():
             self.names = names.replace(k, v)
 
@@ -40,6 +43,32 @@ class LesMis(object):
     def dnames(self):
         return self.df_names.set_index("Symbol")
 
+    def hypergraph_example(self):
+
+        names = self.df_names
+        scenes = self.df_scenes
+        scenes["edge"] = [
+            ".".join([str(scenes.loc[idx][col]) for col in scenes.columns[:-2]])
+            for idx in scenes.index
+        ]
+        scenes["node"] = scenes["Characters"]
+        df = scenes[["edge", "node"]]
+        cell_weights = df.groupby(["edge"]).count().to_dict()["node"]
+        df["weight"] = df.edge.map(lambda e: np.round(1 / cell_weights.get(e, 1), 2))
+        nprops = names
+        nprops["weight"] = np.round(np.random.uniform(0, 1, len(names)), 2)
+        lm = hnx.Hypergraph(
+            df,
+            cell_weight_col="weight",
+            node_properties=nprops,
+            node_weight_prop_col="weight",
+            name="LesMis example from HNX",
+        )
+        lm.nodes["JV"].job = "mayor"
+        lm.nodes["MY"].avocation = "to be kind"
+        lm.nodes["BS"].vocation = "explorer"
+        return lm
+
 
 def lesmis_hypergraph_from_df(df, by="Chapter", on="Characters"):
     cols = df.columns.tolist()
@@ -50,6 +79,32 @@ def lesmis_hypergraph_from_df(df, by="Chapter", on="Characters"):
             for t, dft in df.groupby(cols[: cols.index(by) + 1])[on]
         }
     )
+
+
+def lesmis_hypergraph():
+    lesmis = LesMis()
+    names = lesmis.df_names
+    scenes = lesmis.df_scenes
+    scenes["edge"] = [
+        ".".join([str(scenes.loc[idx][col]) for col in scenes.columns[:-2]])
+        for idx in scenes.index
+    ]
+    scenes["node"] = scenes["Characters"]
+    df = scenes[["edge", "node"]]
+    cell_weights = df.groupby(["edge"]).count().to_dict()["node"]
+    df["weight"] = df.edge.map(lambda e: np.round(1 / cell_weights.get(e, 1), 2))
+    nprops = names
+    nprops["weight"] = np.round(np.random.uniform(0, 1, len(names)), 2)
+    lm = hnx.Hypergraph(
+        df,
+        cell_weight_col="weight",
+        node_properties=nprops,
+        node_weight_prop_col="weight",
+    )
+    lm.nodes["JV"].job = "mayor"
+    lm.nodes["MY"].avocation = "to be kind"
+    lm.nodes["BS"].vocation = "explorer"
+    return lm
 
 
 def book_tour(df, xlabel="Book", ylabel="Volume", s=3.5):
@@ -114,7 +169,7 @@ def get_scene_data():
 
 
 # LesMis Data:
-names = """AZ Anzelma, daughter of TH and TM
+names = r"""AZ Anzelma, daughter of TH and TM
 BA Bahorel, `Friends of the ABC' cutup
 BB Babet, tooth-pulling bandit of Paris
 BJ Brujon, notorious criminal

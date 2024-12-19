@@ -8,25 +8,10 @@ This module contains methods which compute various distributions for hypergraphs
 
 Also computes general hypergraph information: number of nodes, edges, cells, aspect ratio, incidence matrix density
 """
+
 from collections import Counter
 import numpy as np
-import networkx as nx
-from hypernetx import *
 from hypernetx.utils.decorators import not_implemented_for
-
-__all__ = [
-    "centrality_stats",
-    "edge_size_dist",
-    "degree_dist",
-    "comp_dist",
-    "s_comp_dist",
-    "toplex_dist",
-    "s_node_diameter_dist",
-    "s_edge_diameter_dist",
-    "info",
-    "info_dict",
-    "dist_stats",
-]
 
 
 def centrality_stats(X):
@@ -43,7 +28,13 @@ def centrality_stats(X):
     [min, max, mean, median, standard deviation] : list
         List of centrality statistics for X
     """
-    return [min(X), max(X), np.mean(X), np.median(X), np.std(X)]
+    return [
+        min(X),
+        max(X),
+        np.mean(X).tolist(),
+        np.median(X).tolist(),
+        np.std(X).tolist(),
+    ]
 
 
 def edge_size_dist(H, aggregated=False):
@@ -52,7 +43,7 @@ def edge_size_dist(H, aggregated=False):
 
     Parameters
     ----------
-    H : Hypergraph
+    H: hnx.Hypergraph
     aggregated :
         If aggregated is True, returns a dictionary of
         edge sizes and counts. If aggregated is False, returns a
@@ -76,7 +67,7 @@ def degree_dist(H, aggregated=False):
 
     Parameters
     ----------
-    H : Hypergraph
+    H: hnx.Hypergraph
     aggregated :
         If aggregated is True, returns a dictionary of
         degrees and counts. If aggregated is False, returns a
@@ -87,10 +78,7 @@ def degree_dist(H, aggregated=False):
      degree_dist : list or dict
         List of degrees or dictionary of degree distribution
     """
-    if H.nwhy:
-        distr = H.g.node_size_dist()
-    else:
-        distr = [H.degree(n) for n in H.nodes]
+    distr = [H.degree(n) for n in H.nodes]
     if aggregated:
         return Counter(distr)
     else:
@@ -103,7 +91,7 @@ def comp_dist(H, aggregated=False):
 
     Parameters
     ----------
-    H : Hypergraph
+    H: hnx.Hypergraph
     aggregated :
         If aggregated is True, returns a dictionary of
         component sizes (number of nodes) and counts. If aggregated
@@ -133,7 +121,7 @@ def s_comp_dist(H, s=1, aggregated=False, edges=True, return_singletons=True):
 
     Parameters
     ----------
-    H : Hypergraph
+    H: hnx.Hypergraph
     s : positive integer, default is 1
     aggregated :
         If aggregated is True, returns a dictionary of
@@ -175,7 +163,7 @@ def toplex_dist(H, aggregated=False):
 
     Parameters
     ----------
-    H : Hypergraph
+    H: hnx.Hypergraph
     aggregated :
         If aggregated is True, returns a dictionary of
         toplex sizes and counts in H. If aggregated
@@ -197,7 +185,7 @@ def s_node_diameter_dist(H):
     """
     Parameters
     ----------
-    H : Hypergraph
+    H: hnx.Hypergraph
 
     Returns
     -------
@@ -217,7 +205,7 @@ def s_edge_diameter_dist(H):
     """
     Parameters
     ----------
-    H : Hypergraph
+    H: hnx.Hypergraph
 
     Returns
     -------
@@ -239,7 +227,7 @@ def info(H, node=None, edge=None):
 
     Parameters
     ----------
-    H : Hypergraph
+    H: hnx.Hypergraph
     obj : optional
         either a node or edge uid from the hypergraph
     dictionary : optional
@@ -283,7 +271,7 @@ def info_dict(H, node=None, edge=None):
 
     Parameters
     ----------
-    H : Hypergraph
+    H: hnx.Hypergraph
     obj : optional
         either a node or edge uid from the hypergraph
 
@@ -347,17 +335,16 @@ def dist_stats(H):
 
     Parameters
     ----------
-    H : Hypergraph
+    H: hnx.Hypergraph
 
     Returns
     -------
      dist_stats : dict
         Dictionary which keeps track of each of the above items (e.g., basic['nrows'] = the number of nodes in H)
     """
-    if H.isstatic:
-        stats = H.state_dict.get("dist_stats", None)
-        if stats is not None:
-            return H.state_dict["dist_stats"]
+    stats = H._state_dict.get("dist_stats", None)
+    if stats is not None:
+        return H._state_dict["dist_stats"]
 
     cstats = ["min", "max", "mean", "median", "std"]
     basic = dict()
@@ -408,6 +395,5 @@ def dist_stats(H):
     # # Diameters
     # basic['s edge diam list'] = s_edge_diameter_dist(H)
     # basic['s node diam list'] = s_node_diameter_dist(H)
-    if H.isstatic:
-        H.set_state(dist_stats=basic)
+    H.set_state(dist_stats=basic)
     return basic

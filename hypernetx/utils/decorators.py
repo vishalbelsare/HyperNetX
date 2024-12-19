@@ -1,17 +1,12 @@
-import sys
-from warnings import warn
-import hypernetx as hnx
+import warnings
+from functools import wraps
+
 from decorator import decorator
-from hypernetx.exception import HyperNetXError, HyperNetXNotImplementedError
 
-try:
-    import nwhy
-except:
-    pass
+import hypernetx as hnx
 
-__all__ = [
-    "not_implemented_for",
-]
+
+__all__ = ["not_implemented_for", "warn_to_be_deprecated"]
 
 
 def not_implemented_for(*object_types):
@@ -65,3 +60,29 @@ def not_implemented_for(*object_types):
             return not_implemented_for_func(*args, **kwargs)
 
     return _not_implemented_for
+
+
+def warn_to_be_deprecated(func):
+    """Decorator for methods that are to be deprecated
+
+    Public references to deprecated methods or functions will be removed from the Hypergraph API in a future release.
+
+    Warns
+    -----
+    FutureWarning
+    """
+
+    deprecation_warning_msg = (
+        "This method or function will be deprecated in a future release. "
+        "Public references to this method or function will be removed from the "
+        "Hypergraph API in a future release."
+    )
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        warnings.simplefilter("always", FutureWarning)
+        warnings.warn(deprecation_warning_msg, FutureWarning, stacklevel=2)
+        warnings.simplefilter("default", FutureWarning)
+        return func(*args, **kwargs)
+
+    return wrapper

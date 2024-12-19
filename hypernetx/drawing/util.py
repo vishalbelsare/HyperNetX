@@ -44,12 +44,13 @@ def transpose_inflated_kwargs(inflated):
 
 def get_collapsed_size(v):
     try:
-        if type(v) == str and ':' in v:
-            return int(v.split(':')[-1])
+        if type(v) == str and ":" in v:
+            return int(v.split(":")[-1])
     except:
         pass
-    
+
     return 1
+
 
 def get_frozenset_label(S, count=False, override={}):
     """
@@ -87,7 +88,7 @@ def get_line_graph(H, collapse=True):
 
     Parameters
     ----------
-    H: Hypergraph
+    H: hnx.Hypergraph
         the entity to be drawn
     collapse: bool
         True if edges should be added if hyper edges are identical
@@ -122,7 +123,7 @@ def get_set_layering(H, collapse=True):
 
     Parameters
     ----------
-    H: Hypergraph
+    H: hnx.Hypergraph
         the entity to be drawn
     collapse: bool
         True if edges should be added if hyper edges are identical

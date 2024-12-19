@@ -1,134 +1,202 @@
 .. _glossary:
 
+===================
+HNX Data Structures
+===================
+
+..  figure:: images/code_structure.png
+   :width: 300px
+   :align: right
+   
+   Code structure for HNX.
+
+The HNX library centers around the idea of a :term:`hypergraph`.  
+There are many definitions of a *hypergraph*. In HNX a hypergraph
+is a tuple of three sets, :math:`H =  (V, E, \mathcal{I})`. 
+
+- :math:`V`, a set of *nodes* (aka hypernodes, vertices), distinguished by unique identifiers
+- :math:`E` a set of *edges* (aka hyperedges), distinguished by  unique identifiers
+- :math:`\mathcal{I}`, a set of *incidences*, which form a subset of :math:`E \times V`, distinguished by the pairing of unique identifiers of edges in :math:`E` and nodes in :math:`V`
+
+The incidences :math:`\mathcal{I}` can be described by a Boolean function, :math:`\mathcal{I}_B : E \times V \rightarrow \{0, 1\}`, indicating whether or not a pair is included in the hypergraph.
+
+In HNX we instantiate :math:`H =  (V, E, \mathcal{I})` using three *hypergraph views.* We can visualize this through a high 
+level diagram of our current code structure shown in Fig. 1. Here we begin with data (e.g., data frame, dictionary, 
+list of lists, etc.) that is digested via the appropriate factory method to construct property stores for nodes, 
+edges, and incidences as well as an incidence store that captures the hypergraph structure. 
+These four objects are then used to create three hypergraph views that the hypergraph object 
+uses to access and analyze the hypergraph structure and attributes.
+
+
 =====================
 Glossary of HNX terms
 =====================
 
+**Note: For all definitions below, assume** :math:`H =  (V, E, \mathcal{I})` **is a
+hypergraph.**
+
 .. glossary::
 	:sorted:
 
-	Entity
-		Class in entity.py. 
-		The base class for nodes, edges, and other HNX structures. An entity has a unique id, a set of properties, and a set of other entities belonging to it called its :term:`elements <Entity.elements>` (an entity may not contain itself).
-		If an entity A belongs to another entity B then A has membership in B and A is an element of B. For any entity A access a dictionary of its elements (keyed by uid) using ``A.elements`` and a dictionary of its memberships using ``A.memberships``.
-
-	Entity.elements
-		Attribute in class Entity. Returns a dictionary of elements of the entity.
-		For any entity A, the elements equal the set of entities belonging to A. Use ``A.uidset`` to access the set of uids belonging to the elements of A and ``A.elements`` to access a dictionary of uid,entity key value pairs of elements of A.
-
-	Entity.children
-		Attribute in class Entity. Returns a set of uids for the elements of the elements of entity.
-		For any entity A, the set of entities which belong to some entity belonging to A.  Use ``A.children`` to access the set of uids belonging to the children of A and ``A.registry`` to access a dictionary of uid,entity key value pairs of the children of A.
-		See also :term:`Entity.levelset`.
-
-	Entity.registry
-		Attribute in class Entity.
-		A dictionary of uid,entity key value pairs of the :term:`children <Entity.children>` of an entity.
-
-	Entity.memberships
-		Attribute in class Entity.
-		A dictionary of uid,entity key value pairs of entities to which the entity belongs.
-
-	Entity.levelset
-		Method in class Entity.
-		For any entity A, Level 1 of A is the set of :term:`elements <Entity.elements>` of A.
-		The elements of entities in Level 1 of A belong to Level 2 of A. The elements of entities in Level k of A belong to Level k+1 of A.
-		The entities in Level 2 of A are called A's children.
-		A single entity may occupy multiple Level sets of an entity. An entity may belong to any of its own Level sets except Level 1 as no entity may contain itself as an element.
-		Note that if Level n of A is nonempty then Level k of A is nonempty for all k<n.
-		Use ``A.levelset(k)`` to access a dictionary of uid,entity key value pairs for the entities in Level k of A.
-
-	Entity.depth
-		Method in class Entity.
-		The number of non empty :term:`Level sets <Entity.levelset>` belonging to an entity.
-		For any entity A, if A.elements is empty then it has depth 0 and no non-empty Levels.
-		If A.elements contains only Entities of depth 0 then A has depth 1.
-		If A.elements contains only Entities of depth 0 and depth 1 then A has depth 2.
-		If A.elements contains an entity of depth n and no Entities of depth more than n then it has depth n+1.
-
-	entityset
-		An entity A satisfying the :term:`Bipartite Condition`, the property that the set of entities in Level 1 of A is disjoint from the set of entities in Level 2 of A, i.e. the elements of A are disjoint from the children of A. An entityset is instantiated in the class EntitySet.
+	
+	PropertyStore
+		Class in property_store.py. Each of the basic sets in a hypergraph, (Nodes, Edges, Incidences), have metadata stored in a
+		PropertyStore. By storing the data and metadata in a single place, updates and references have a single source of
+		truth.
 
 	hypergraph
-		A pair of entitysets (Nodes,Edges) such that Edges has :term:`depth <Entity.depth>` 2, Nodes have depth 1, and the children of Edges is exactly the set of elements of Nodes. Intuitively, every element of Edges is a (hyper)edge, which is either empty or contains elements of Nodes. Every node in Nodes has :term:`membership <Entity.memberships>` in some edge in Edges. Since a node has :term:`depth <Entity.depth>` 0 it is distinguished by its uid, properties, and memberships. A hypergraph is instantiated in the class Hypergraph.
+		A hypergraph is a tuple of three sets, :math:`H =  (V, E, \mathcal{I})`. 
+
+		- :math:`V`, a set of *nodes* (aka hypernodes, vertices), distinguished by unique identifiers
+		- :math:`E` a set of *edges* (aka hyperedges), distinguished by  unique identifiers
+		- :math:`\mathcal{I}`, a set of *incidences*, which form a subset of :math:`E \times V`, distinguished by the pairing of unique identifiers of edges in :math:`E` and nodes in :math:`V`
+		
+	multihypergraph
+		HNX hypergraphs may be multihypergraphs. A multihypergraph is a hypergraph that allows distinct edges to contain the same set of *elements* and distinct nodes to belong to the same set of edges (aka *memberships*). When collapsing a hypergraph,
+		edges incident with the same set of nodes or nodes incident with the same set of edges are collapsed to single objects.
+
+	IncidenceStore
+		Class in incidence_store.py holding the set of ordered pairs of Edges and Nodes belonging to the hypergraph. The :term:`elements` and 
+		:term:`memberships` are inferred from the :term:`incidences` held in the IncidenceStore.
+
+	HypergraphView
+		Class in hyp_view.py tying the properties of hypergraph objects held in the :term:`PropertyStore` class, which holds metadata, with their ids 
+		held in the :term:`IncidenceStore` class, which holds the Hypergraph relationships.
+		The PropertyStores are unaware of the IncidenceStore and vice versa.
+
+	elements
+		The elements of an edge is the set of nodes incident to the edge in the Hypergraph.
+
+	memberships   
+		The memberships of a node is the set of edges incident to the node in the Hypergraph.
+
+	incidences
+		The ordered pairs in :math:`\mathcal{I} \subset E \times V`, which define the relationships in the hypergraph.
+		The incidences :math:`\mathcal{I}` of a hypergraph provide the minimal amount of data required to instantiate the hypergraph. 
+		The Edges :math:`E` and Nodes :math:`V` of a Hypergraph can be inferred from the pairs :math:`(e,v)` in the Incidences.
+			
+		Each incidence uniquely identifies a single edge and node.
+		Each incidence has metadata assigned to it. Incidences
+		in a hypergraph are assigned a weight either by default or specified by a user.
+		If :math:`(e,v) \in \mathcal{I}` then :math:`e` *contains* :math:`v`, :math:`v` is an
+		:term:`element <elements>` of :math:`e`, and :math:`v` has :term:`membership <memberships>` in :math:`e`.
+		
+	incidence matrix
+		A rectangular matrix constructed from a hypergraph, :math:`H =  (V, E, \mathcal{I})`. The rows of the matrix are indexed by :math:`V`. 
+		The columns of the matrix are indexed by :math:`E`. An entry in the matrix at
+		position :math:`(v,e)` for some :math:`v \in V`  and :math:`e \in E` is nonzero if and only if :math:`(e,v) \in I`. 	
+		A *weighted* incidence matrix uses the incidence weight associated with :math:`(e,v)` for the nonzero entry. An *unweighted* incidence
+		matrix has the integer :math:`1` in all nonzero entries.
+		
+
+	edges
+	hyperedges
+		A set of objects distinguished by unique identifiers (uids). Each edge has 
+		metadata associated with it. Edges are assigned a weight either by default or
+		specified by the user. Edges contain nodes. Nodes are :term:`elements` of edges.
+
+	nodes
+	vertices
+	hypernodes
+		A set of objects distinguished by unique identifiers (uids). Each node has 
+		metadata associated with it. Nodes are assigned a weight either by default or
+		specified by the user. Nodes belong to edges. Nodes have :term:`memberships` in edges.
 
 	subhypergraph
-		Given a hypergraph (Nodes,Edges), a subhypergraph is a pair of subsets of (Nodes,Edges).
+		A subhypergraph of a hypergraph, :math:`H =  (V, E, \mathcal{I})`, is a hypergraph, :math:`H' =  (V', E', \mathcal{I'})` such that :math:`(e',v') \in \mathcal{I'}` if and only if :math:`e' \in E' \subset E`, :math:`v' \in V' \subset V` and :math:`(e,v) \in \mathcal{I}`.
 
 	degree
-		Given a hypergraph (Nodes,Edges), the degree of a node in Nodes is the number of edges in Edges to which the node belongs.
-		See also: :term:`s-degree`
-
-	incidence matrix
-		A rectangular matrix constructed from a hypergraph (Nodes,Edges) where the elements of Nodes index the matrix rows, and the elements of Edges index the matrix columns. Entry (i,j) in the incidence matrix is 1 if the node corresponding to i in Nodes belongs to the edge corresponding to j in Edges, and is 0 otherwise.
-
-	s-adjacency matrix
-		For a hypergraph (Nodes,Edges) and positive integer s, a square matrix where the elements of Nodes index both rows and columns. The matrix can be weighted or unweighted. Entry (i,j) is nonzero if and only if node i and node j belong to at least s shared edges, and is equal to the number of shared edges (if weighted) or 1 (if unweighted).
-
-	s-edge-adjacency matrix
-		For a hypergraph (Nodes,Edges) and positive integer s, a square matrix where the elements of Edges index both rows and columns. The matrix can be weighted or unweighted. Entry (i,j) is nonzero if and only if edge i and edge j share to at least s nodes, and is equal to the number of shared nodes (if weighted) or 1 (if unweighted).
-
-	s-auxiliary matrix
-		For a hypergraph (Nodes,Edges) and positive integer s, the submatrix of the :term:`s-edge-adjacency matrix <s-edge-adjacency matrix>` obtained by restricting to rows and columns corresponding to edges of size at least s.
-
-	toplex
-		For a hypergraph (Nodes,Edges), a toplex is an edge in Edges whose elements (i.e. nodes) do not all belong to any other edge in Edge.
+		Given a hypergraph :math:`H =  (V, E, \mathcal{I})`, the degree of a node in :math:`V` is the number of edges in :math:`E` to which the node is incident.
+		See also: :term:`s-degree`		
 
 	dual
-		For a hypergraph (Nodes,Edges), its dual is the hypergraph constructed by switching the roles of Nodes and Edges. More precisely, if node i belongs to edge j in the hypergraph, then node j belongs to edge i in the dual hypergraph.
+		The dual of a hypergraph exchanges the roles of the edges and nodes in the hypergraph.
+		For a hypergraph :math:`H =  (V, E, \mathcal{I})` the dual is
+		:math:`H_D = (E, V, \mathcal{I}^T)` where the ordered pairs in :math:`\mathcal{I}^T` are the transposes of the ordered pairs in :math:`\mathcal{I}`.  The :term:`incidence matrix` of :math:`H_D` is the transpose of the incidence matrix of :math:`H`.
 
-	s-node-walk
-		For a hypergraph (Nodes,Edges) and positive integer s, a sequence of nodes in Nodes such that each successive pair of nodes share at least s edges in Edges.
-
-	s-edge-walk
-		For a hypergraph (Nodes,Edges) and positive integer s, a sequence of edges in Edges such that each successive pair of edges intersects in at least s nodes in Nodes.
-
-	s-walk
-		Either an s-node-walk or an s-edge-walk.
-
-	s-connected component, s-node-connected component
-		For a hypergraph (Nodes,Edges) and positive integer s, an s-connected component is a :term:`subhypergraph` induced by a subset of Nodes with the property that there exists an s-walk between every pair of nodes in this subset. An s-connected component is the maximal such subset in the sense that it is not properly contained in any other subset satisfying this property.
-
-	s-edge-connected component
-		For a hypergraph (Nodes,Edges) and positive integer s, an s-edge-connected component is a :term:`subhypergraph` induced by a subset of Edges with the property that there exists an s-edge-walk between every pair of edges in this subset. An s-edge-connected component is the maximal such subset in the sense that it is not properly contained in any other subset satisfying this property.
-
-	s-connected, s-node-connected
-		A hypergraph is s-connected if it has one s-connected component.
-
-	s-edge-connected
-		A hypergraph is s-edge-connected if it has one s-edge-connected component.
-
-	s-distance
-		For a hypergraph (Nodes,Edges) and positive integer s, the s-distances between two nodes in Nodes is the length of the shortest :term:`s-node-walk` between them. If no s-node-walks between the pair of nodes exists, the s-distance between them is infinite. The s-distance
-		between edges is the length of the shortest :term:`s-edge-walk` between them. If no s-edge-walks between the pair of edges exist, then s-distance between them is infinite.
-
-	s-diameter
-		For a hypergraph (Nodes,Edges) and positive integer s, the s-diameter is the maximum s-Distance over all pairs of nodes in Nodes.
-
-	s-degree
-		For a hypergraph (Nodes, Edges) and positive integer s, the s-degree of a node is the number of edges in Edges of size at least s to which node belongs. See also: :term:`degree`
-
-	s-edge
-		For a hypergraph (Nodes, Edges) and positive integer s, an s-edge is any edge of size at least s.
-
-	s-linegraph
-		For a hypergraph (Nodes, Edges) and positive integer s, an s-linegraph is a graph representing
-		the node to node or edge to edge connections according to the *width* s of the connections.
-		The node s-linegraph is a graph on the set Nodes. Two nodes in Nodes are incident in the node s-linegraph if they
-		share at lease s incident edges in Edges; that is, there are at least s elements of Edges to which they both belong.
-		The edge s-linegraph is a graph on the set Edges. Two edges in Edges are incident in the edge s-linegraph if they
-		share at least s incident nodes in Nodes; that is, the edges intersect in at least s nodes in Nodes.
-
-	Bipartite Condition
-		Condition imposed on instances of the class EntitySet.
-	    *Entities that are elements of the same EntitySet, may not contain each other as elements.* 
-	    The elements and children of an EntitySet generate a specific partition for a bipartite graph. 
-	    The partition is isomorphic to a Hypergraph where the elements correspond to hyperedges and
-	    the children correspond to the nodes. EntitySets are the basic objects used to construct dynamic hypergraphs
-	    in HNX. See methods :py:meth:`classes.hypergraph.Hypergraph.bipartite` and :py:meth:`classes.hypergraph.Hypergraph.from_bipartite`.
+	toplex
+		A toplex in a hypergraph, :math:`H =  (V, E, \mathcal{I})`, is an edge :math:`e \in E` whose set of elements is not properly contained in any other edge in :math:`E`. That is, if :math:`f \in E` and the elements of :math:`e` are all elements of :math:`f` then the elements of :math:`f` are all elements of :math:`e`. 
 
 	simple hypergraph
 		A hypergraph for which no edge is completely contained in another.
+
+	s-adjacent
+		For a hypergraph, :math:`H =  (V, E, \mathcal{I})`, and positive integer s,
+		two nodes in :math:`V` are s-adjacent if there are at least s edges in :math:`E`, which contain both of them.
+
+	s-edge-adjacent
+		For a hypergraph, :math:`H =  (V, E, \mathcal{I})`, and positive integer s,
+		two edges in :math:`E` are s-edge-adjacent if
+		they there are at least s nodes in :math:`V` belonging to both of them.
+		Another way of saying this is two edges are s-edge-adjacent if 
+		they are s-adjacent in the dual of :math:`H`.
+
+	s-adjacency matrix
+		For a positive integer s, a square matrix for a hypergraph, :math:`H =  (V, E, \mathcal{I})`, indexed by :math:`V` such that an
+		entry :math:`(v_1,v_2)` is nonzero if only if :math:`v_1, v_2 \in V` are s-adjacent. An s-adjacency matrix can be weighted or unweighted, in which case all entries are 0's and 1's.
+
+	s-edge-adjacency matrix
+		An s-edge-adjacency matrix is the s-adjacency matrix for the dual
+		of :math:`H`.
+
+	s-auxiliary matrix
+	s-edge-auxiliary matrix
+		For a hypergraph, :math:`H =  (V, E, \mathcal{I})`, and positive integer s, the submatrix of the :term:`s-adjacency matrix` or the :term:`s-edge-adjacency matrix` obtained by removing all 0-rows and 0-columns.
+
+	s-node-walk
+		For a hypergraph, :math:`H =  (V, E, \mathcal{I})`, and positive integer s, a sequence of nodes in :math:`V` such that each successive pair of nodes are s-adjacent. The length of the
+		s-node-walk is the number of adjacent pairs in the sequence.
+
+	s-edge-walk
+		For a hypergraph, :math:`H =  (V, E, \mathcal{I})`, and positive integer s, a sequence of edges in :math:`E` such that each successive pair of edges are s-edge-adjacent. The length of the
+		s-edge-walk is the number of adjacent pairs in the sequence.
+
+	s-walk
+		Either an s-node-walk or an s-edge-walk. The length of the
+		s-walk is the number of adjacent pairs in the sequence.
+
+	s-connected component
+	s-node-connected component
+	s-edge-connected component
+		For a hypergraph, :math:`H =  (V, E, \mathcal{I})`, and positive integer s, an s-connected component is a :term:`subhypergraph` induced by a subset of :math:`V` with the property that there exists an s-walk between every pair of nodes in this subset. 
+		An s-connected component is the maximal such subset in the sense that it is not properly contained in any other subset satisfying this property.
+
+		An s-node-connected component is an s-connected component. An 
+		s-edge-connected component is an s-connected component of the dual
+		of :math:`H`.
+
+	s-connected
+	s-node-connected
+	s-edge-connected
+		A hypergraph is s-connected if it has one s-connected component.
+		Similarly for s-node-connected and s-edge-connected.
+
+	s-degree
+		For a hypergraph, :math:`H =  (V, E, \mathcal{I})`, and positive integer s, the s-degree of a node, :math:`v \in V` is the number of edges in :math:`E` of size at least s to which :math:`v` belongs. See also: :term:`degree`
+
+	s-distance
+		For a hypergraph, :math:`H =  (V, E, \mathcal{I})`, and positive integer s, the s-distances between two nodes in :math:`V` is the length of the shortest :term:`s-node-walk` between them. 
+		If no s-node-walk between the pair of nodes exists, the s-distance between them is infinite. 
+		
+	s-edge-distance
+		The s-edge-distance
+		between two edges in :math:`E` is the length of the shortest :term:`s-edge-walk` between them. If no s-edge-walk between the pair of edges exists, then s-distance between them is infinite.
+
+	s-diameter
+		For a hypergraph, :math:`H =  (V, E, \mathcal{I})`, and positive integer s, the s-diameter is the maximum s-distance over all pairs of nodes in :math:`V`.
+
+
+	s-edge
+		For a hypergraph, :math:`H =  (V, E, \mathcal{I})`, and positive integer s, an s-edge is any edge :math:`e \in E` of size at least s, where the
+		size of :math:`e` equals the number of nodes in :math:`V` belonging to :math:`e`.
+
+	s-linegraph
+		For a hypergraph, :math:`H =  (V, E, \mathcal{I})`, and positive integer s, an s-linegraph :math:`G` is a graph representing
+		the node to node or edge to edge connections defined by the :term:`s-adjacency matrices<s-adjacency matrix>`.
+
+		The node s-linegraph, :math:`G_V` is a graph on the set :math:`V`. Two nodes in :math:`V` are incident in :math:`G_V` if they are :term:`s-adjacent`.
+
+		The edge s-linegraph, :math:`G_E` is a graph on the set :math:`E`. Two edges in :math:`E` are incident in :math:`G_E` if they are :term:`s-edge-adjacent`.
 
 
 

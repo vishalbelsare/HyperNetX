@@ -2,7 +2,7 @@
 # All rights reserved.
 
 from hypernetx import Hypergraph
-from .util import (
+from hypernetx.drawing.util import (
     get_frozenset_label,
     get_collapsed_size,
     get_set_layering,
@@ -11,17 +11,14 @@ from .util import (
 )
 
 import matplotlib.pyplot as plt
-from matplotlib.collections import PolyCollection, LineCollection, CircleCollection
+from matplotlib.collections import PolyCollection
 
 import networkx as nx
 
-from itertools import combinations
-from collections import defaultdict
 
 import numpy as np
 from scipy.spatial.distance import pdist
 from scipy.spatial import ConvexHull
-from scipy.spatial import Voronoi
 
 # increases the default figure size to 8in square.
 plt.rcParams["figure.figsize"] = (8, 8)
@@ -33,7 +30,7 @@ theta = np.linspace(0, 2 * np.pi, N_CONTROL_POINTS + 1)[:-1]
 cp = np.vstack((np.cos(theta), np.sin(theta))).T
 
 
-def layout_node_link(H, layout=nx.spring_layout, **kwargs):
+def layout_node_link(H, G=None, layout=nx.spring_layout, **kwargs):
     """
     Helper function to use a NetwrokX-like graph layout algorithm on a Hypergraph
 
@@ -42,8 +39,10 @@ def layout_node_link(H, layout=nx.spring_layout, **kwargs):
 
     Parameters
     ----------
-    H: Hypergraph
+    H: hnx.Hypergraph
         the entity to be drawn
+    G: Graph
+        an additional set of links to consider during the layout process
     layout: function
         the layout algorithm which accepts a NetworkX graph and keyword arguments
     kwargs: dict
@@ -54,7 +53,13 @@ def layout_node_link(H, layout=nx.spring_layout, **kwargs):
     dict
         mapping of node and edge positions to R^2
     """
-    return layout(H.bipartite(), **kwargs)
+
+    B = H.bipartite()
+
+    if G is not None:
+        B.add_edges_from(G.edges())
+
+    return layout(B, **kwargs)
 
 
 def get_default_radius(H, pos):
@@ -67,7 +72,7 @@ def get_default_radius(H, pos):
 
     Parameters
     ----------
-    H: Hypergraph
+    H: hnx.Hypergraph
         the entity to be drawn
     pos: dict
         mapping of node and edge positions to R^2
@@ -85,7 +90,9 @@ def get_default_radius(H, pos):
     return 1
 
 
-def draw_hyper_edge_labels(H, polys, labels={}, ax=None, **kwargs):
+def draw_hyper_edge_labels(
+    H, pos, polys, labels={}, edge_labels_on_edge=True, ax=None, **kwargs
+):
     """
     Draws a label on the hyper edge boundary.
 
@@ -97,7 +104,7 @@ def draw_hyper_edge_labels(H, polys, labels={}, ax=None, **kwargs):
 
     Parameters
     ----------
-    H: Hypergraph
+    H: hnx.Hypergraph
         the entity to be drawn
     polys: PolyCollection
         collection of polygons returned by draw_hyper_edges
@@ -116,26 +123,32 @@ def draw_hyper_edge_labels(H, polys, labels={}, ax=None, **kwargs):
     for edge, path, params in zip(H.edges, polys.get_paths(), params):
         s = labels.get(edge, edge)
 
-        # calculate the xy location of the annotation
-        # this is the midpoint of the pair of adjacent points the most distant
-        d = ((path.vertices[:-1] - path.vertices[1:]) ** 2).sum(axis=1)
-        i = d.argmax()
+        theta = 0
+        xy = None
 
-        x1, x2 = path.vertices[i : i + 2]
-        x, y = x2 - x1
-        theta = 360 * np.arctan2(y, x) / (2 * np.pi)
-        theta = (theta + 360) % 360
+        if edge_labels_on_edge:
+            # calculate the xy location of the annotation
+            # this is the midpoint of the pair of adjacent points the most distant
+            d = ((path.vertices[:-1] - path.vertices[1:]) ** 2).sum(axis=1)
+            i = d.argmax()
 
-        while theta > 90:
-            theta -= 180
+            x1, x2 = path.vertices[i : i + 2]
+            x, y = x2 - x1
+            theta = 360 * np.arctan2(y, x) / (2 * np.pi)
+            theta = (theta + 360) % 360
+
+            while theta > 90:
+                theta -= 180
+
+            xy = (x1 + x2) / 2
+        else:
+            xy = pos[edge]
 
         # the string is a comma separated list of the edge uid
-        ax.annotate(
-            s, (x1 + x2) / 2, rotation=theta, ha="center", va="center", **params
-        )
+        ax.annotate(s, xy, rotation=theta, ha="center", va="center", **params)
 
 
-def layout_hyper_edges(H, pos, node_radius={}, dr=None):
+def layout_hyper_edges(H, pos, node_radius={}, dr=None, contain_hyper_edges=False):
     """
     Draws a convex hull for each edge in H.
 
@@ -146,7 +159,7 @@ def layout_hyper_edges(H, pos, node_radius={}, dr=None):
 
     Parameters
     ----------
-    H: Hypergraph
+    H: hnx.Hypergraph
         the entity to be drawn
     pos: dict
         mapping of node and edge positions to R^2
@@ -174,18 +187,22 @@ def layout_hyper_edges(H, pos, node_radius={}, dr=None):
 
     radii = {
         v: {v: i for i, v in enumerate(sorted(e, key=levels.get))}
-        for v, e in H.dual().edges.elements.items()
+        for v, e in H.nodes.memberships.items()
     }
 
     def get_padded_hull(uid, edge):
         # make sure the edge contains at least one node
         if len(edge):
-            points = np.vstack(
-                [
-                    cp * (node_radius.get(v, r0) + dr * (2 + radii[v][uid])) + pos[v]
-                    for v in edge
-                ]
-            )
+            points = [
+                cp * (node_radius.get(v, r0) + dr * (2 + radii[v][uid])) + pos[v]
+                for v in edge
+            ]
+
+            if contain_hyper_edges:
+                points.append(cp * r0 + pos[uid])
+
+            points = np.vstack(points)
+
         # if not, draw an empty edge centered around the location of the edge node (in the bipartite graph)
         else:
             points = 4 * r0 * cp + pos[uid]
@@ -197,13 +214,15 @@ def layout_hyper_edges(H, pos, node_radius={}, dr=None):
     return [get_padded_hull(uid, list(H.edges[uid])) for uid in H.edges]
 
 
-def draw_hyper_edges(H, pos, ax=None, node_radius={}, dr=None, **kwargs):
+def draw_hyper_edges(
+    H, pos, ax=None, node_radius={}, contain_hyper_edges=False, dr=None, **kwargs
+):
     """
     Draws a convex hull around the nodes contained within each edge in H
 
     Parameters
     ----------
-    H: Hypergraph
+    H: hnx.Hypergraph
         the entity to be drawn
     pos: dict
         mapping of node and edge positions to R^2
@@ -221,7 +240,9 @@ def draw_hyper_edges(H, pos, ax=None, node_radius={}, dr=None, **kwargs):
     PolyCollection
         a Matplotlib PolyCollection that can be further styled
     """
-    points = layout_hyper_edges(H, pos, node_radius=node_radius, dr=dr)
+    points = layout_hyper_edges(
+        H, pos, node_radius=node_radius, dr=dr, contain_hyper_edges=contain_hyper_edges
+    )
 
     polys = PolyCollection(points, **inflate_kwargs(H.edges, kwargs))
 
@@ -243,7 +264,7 @@ def draw_hyper_nodes(H, pos, node_radius={}, r0=None, ax=None, **kwargs):
 
     Parameters
     ----------
-    H: Hypergraph
+    H: hnx.Hypergraph
         the entity to be drawn
     pos: dict
         mapping of node and edge positions to R^2
@@ -293,7 +314,7 @@ def draw_hyper_labels(H, pos, node_radius={}, ax=None, labels={}, **kwargs):
 
     Parameters
     ----------
-    H: Hypergraph
+    H: hnx.Hypergraph
         the entity to be drawn
     pos: dict
         mapping of node and edge positions to R^2
@@ -326,6 +347,7 @@ def draw_hyper_labels(H, pos, node_radius={}, ax=None, labels={}, **kwargs):
             }
         )
 
+
 def draw(
     H,
     pos=None,
@@ -338,13 +360,18 @@ def draw(
     node_radius=None,
     edges_kwargs={},
     nodes_kwargs={},
+    edge_labels_on_edge=True,
     edge_labels={},
     edge_labels_kwargs={},
     node_labels={},
     node_labels_kwargs={},
     with_edge_labels=True,
     with_node_labels=True,
-    label_alpha=0.35,
+    node_label_alpha=0.35,
+    edge_label_alpha=0.35,
+    with_additional_edges=None,
+    contain_hyper_edges=False,
+    additional_edges_kwargs={},
     return_pos=False,
 ):
     """
@@ -390,7 +417,7 @@ def draw(
 
     Parameters
     ----------
-    H: Hypergraph
+    H: hnx.Hypergraph
         the entity to be drawn
     pos: dict
         mapping of node and edge positions to R^2
@@ -412,6 +439,8 @@ def draw(
         radius of all nodes, or dictionary of node:value; the default (None) calculates radius based on number of collapsed nodes; reasonable values range between 1 and 3
     nodes_kwargs: dict
         keyword arguments passed to matplotlib.collections.PolyCollection for nodes
+    edge_labels_on_edge: bool
+        whether to draw edge labels on the edge (rubber band) or inside
     edge_labels_kwargs: dict
         keyword arguments passed to matplotlib.annotate for edge labels
     node_labels_kwargs: dict
@@ -420,19 +449,24 @@ def draw(
         set to False to make edge labels invisible
     with_node_labels: bool
         set to False to make node labels invisible
-    label_alpha: float
-        the transparency (alpha) of the box behind text drawn in the figure
+    node_label_alpha: float
+        the transparency (alpha) of the box behind text drawn in the figure for node labels
+    edge_label_alpha: float
+        the transparency (alpha) of the box behind text drawn in the figure for edge labels
+    with_additional_edges: networkx.Graph
+        ...
+    contain_hyper_edges: bool
+        whether the rubber band shoudl be drawn around the location of the edge in the bipartite graph. This may be invisibile unless "with_additional_edges" contains this information.
+
     """
 
     ax = ax or plt.gca()
 
     if pos is None:
-        pos = layout_node_link(H, layout=layout, **layout_kwargs)
+        pos = layout_node_link(H, with_additional_edges, layout=layout, **layout_kwargs)
 
     r0 = get_default_radius(H, pos)
-    a0 = np.pi * r0 ** 2
-
-
+    a0 = np.pi * r0**2
 
     def get_node_radius(v):
         if node_radius is None:
@@ -450,7 +484,22 @@ def draw(
     edges_kwargs.setdefault("edgecolors", plt.cm.tab10(np.arange(len(H.edges)) % 10))
     edges_kwargs.setdefault("facecolors", "none")
 
-    polys = draw_hyper_edges(H, pos, node_radius=node_radius, ax=ax, **edges_kwargs)
+    polys = draw_hyper_edges(
+        H,
+        pos,
+        node_radius=node_radius,
+        ax=ax,
+        contain_hyper_edges=contain_hyper_edges,
+        **edges_kwargs
+    )
+
+    if with_additional_edges:
+        nx.draw_networkx_edges(
+            with_additional_edges,
+            pos=pos,
+            ax=ax,
+            **inflate_kwargs(with_additional_edges.edges(), additional_edges_kwargs)
+        )
 
     if with_edge_labels:
         labels = get_frozenset_label(
@@ -459,11 +508,13 @@ def draw(
 
         draw_hyper_edge_labels(
             H,
+            pos,
             polys,
             color=edges_kwargs["edgecolors"],
-            backgroundcolor=(1, 1, 1, label_alpha),
+            backgroundcolor=(1, 1, 1, edge_label_alpha),
             labels=labels,
             ax=ax,
+            edge_labels_on_edge=edge_labels_on_edge,
             **edge_labels_kwargs
         )
 
@@ -481,7 +532,7 @@ def draw(
             va="center",
             xytext=(5, 0),
             textcoords="offset points",
-            backgroundcolor=(1, 1, 1, label_alpha),
+            backgroundcolor=(1, 1, 1, node_label_alpha),
             **node_labels_kwargs
         )
 

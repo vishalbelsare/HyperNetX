@@ -1,22 +1,17 @@
 import os
 from hypernetx.utils import HNXCount, remove_row_duplicates
 from collections import OrderedDict, defaultdict
-import scipy
-from scipy.sparse import coo_matrix, issparse
+
 import pandas as pd
 import numpy as np
-import itertools as it
 
-__all__ = ["HarryPotter"]
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
 
 class HarryPotter(object):
     def __init__(self, cols=None):
-
         # Read dataset in using pandas. Fix index column or use default pandas index.
-
         try:
             fname = "https://raw.githubusercontent.com/pnnl/HyperNetX/master/hypernetx/utils/toys/HarryPotter_Characters.csv"
             harrydata = pd.read_csv(fname, encoding="unicode_escape")
@@ -77,6 +72,38 @@ class HarryPotter(object):
         self.arr = imat
 
         slabels = OrderedDict()
-        for cdx, c in enumerate(list(ldict.keys())):
-            slabels.update({c: np.array(list(ldict[c].keys()))})
+        for col_idx, col in enumerate(list(ldict.keys())):
+            slabels.update({col_idx: np.array(list(ldict[col].keys()))})
         self.labels = slabels
+        self.cell_weight_col = "wandweight"
+
+    def set_random_wandweights(self) -> None:
+        self.dataframe[self.cell_weight_col] = [
+            np.random.rand() for _ in self.dataframe.index
+        ]
+
+    def get_edge_properties(self):
+        if self.cell_weight_col not in self.dataframe:
+            return
+
+        edgeprops = (
+            self.dataframe.groupby(["House"])
+            .agg({self.cell_weight_col: "sum"})
+            .reset_index()
+            .rename(columns={"House": "id"})
+        )
+        edgeprops["level"] = 0
+        return edgeprops
+
+    def get_node_properties(self):
+        if self.cell_weight_col not in self.dataframe:
+            return
+
+        nodeprops = (
+            self.dataframe.groupby(["Blood status"])
+            .agg({self.cell_weight_col: "sum"})
+            .reset_index()
+            .rename(columns={"Blood status": "id"})
+        )
+        nodeprops["level"] = 1
+        return nodeprops
